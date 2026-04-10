@@ -178,12 +178,13 @@ footer {
   margin-top: 0.2rem;
 }
  
-/* controls — never wrap */
+/* controls — FIX 1: allow wrapping on very small screens */
 .controls {
   display: flex;
   gap: 0.35rem;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap; /* ← FIX 1: prevents overflow on <340px screens */
 }
 .controls button {
   padding: 0.45rem 0.6rem;
@@ -238,7 +239,7 @@ footer {
   border-radius: 0.75rem;
   padding: 0.4rem;
   display: flex; flex-direction: column; gap: 0.3rem;
-  max-height: 22rem;
+  max-height: 40dvh; /* ← FIX 2: viewport-relative height instead of fixed rem */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   border: 1px solid #3a0a0f;
@@ -292,7 +293,7 @@ footer {
   #title { font-size: 1.1rem; }
   .controls button      { font-size: 1rem; padding: 0.5rem 0.75rem; }
   .controls button.play { padding: 0.5rem 1.6rem; }
-  .playlist { max-height: 26rem; }
+  .playlist { max-height: 45dvh; } /* ← FIX 2 continued: dvh at tablet too */
 }
  
 /* ── Desktop (900px+): two-column side-by-side layout ── */
@@ -309,11 +310,22 @@ footer {
     justify-content: center;
   }
   .sidebar { padding: 1rem; }
-  .playlist { max-height: 30rem; }
+  .playlist { max-height: 50dvh; } /* ← FIX 2 continued: dvh at desktop too */
   .cover { width: 9rem; height: 9rem; font-size: 2rem; }
   #title { font-size: 1.15rem; }
   .controls button      { font-size: 1rem; padding: 0.5rem 0.8rem; }
   .controls button.play { padding: 0.5rem 1.8rem; }
+}
+ 
+/* ── FIX 3: Large screen (1200px+) ── */
+@media (min-width: 1200px) {
+  body { padding: 2.5rem; }
+  .container { max-width: 900px; }
+  .cover { width: 10rem; height: 10rem; font-size: 2.2rem; }
+  #title { font-size: 1.2rem; }
+  .playlist { max-height: 55dvh; }
+  .controls button      { font-size: 1.05rem; padding: 0.55rem 0.9rem; }
+  .controls button.play { padding: 0.55rem 2rem; }
 }
 </style>
 </head>
