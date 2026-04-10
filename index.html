@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FCB Player</title>
+
+<!-- ══ PWA Meta Tags ══════════════════════════════════════════════ -->
+<meta name="description" content="Bayern Munich themed local music player by Sakshyam">
+<meta name="theme-color" content="#DC052D">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FCB Player">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192x192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+<!-- ═════════════════════════════════════════════════════════════ -->
+
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body {
+margin: 0;
+font-family: sans-serif;
+background: linear-gradient(to bottom, #1a0005, #000);
+color: #f3f4f6;
+display: flex;
+align-items: center;
+justify-content: center;
+min-height: 100vh;
+padding: 1rem;
+position: relative;
+overflow-x: hidden;
+}
+
+/* ── Bayern crest watermark background ── */
+#fcb-bg {
+position: fixed;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+width: min(70vw, 70vh);
+height: min(70vw, 70vh);
+opacity: 0.07;
+pointer-events: none;
+z-index: 0;
+animation: crest-pulse 6s ease-in-out infinite;
+filter: drop-shadow(0 0 40px rgba(220,5,45,0.5));
+}
+@keyframes crest-pulse {
+0% { opacity: 0.06; transform: translate(-50%, -50%) scale(1); filter: drop-shadow(0 0 30px rgba(220,5,45,0.4)); }
+50% { opacity: 0.11; transform: translate(-50%, -50%) scale(1.04); filter: drop-shadow(0 0 60px rgba(220,5,45,0.7)); }
+100% { opacity: 0.06; transform: translate(-50%, -50%) scale(1); filter: drop-shadow(0 0 30px rgba(220,5,45,0.4)); }
+}
+
+.container {
+width: 100%;
+max-width: 1000px;
+background: rgba(18,5,8,0.92);
+border-radius: 1rem;
+border: 1px solid #3a0a0f;
+box-shadow: 0 0 30px rgba(220,5,45,0.15);
+overflow: hidden;
+position: relative;
+z-index: 1;
+}
+header, footer {
+padding: 1rem;
+border-bottom: 1px solid #3a0a0f;
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
+footer { border-top: 1px solid #3a0a0f; border-bottom: none; font-size: 0.8rem; color: #888; }
+nav a { padding: 0.4rem 0.8rem; border-radius: 0.4rem; color: #f3f4f6; text-decoration: none; font-size: 0.9rem; }
+nav a.active { background: #3a0a0f; }
+nav a:hover { background: rgba(220,5,45,0.15); }
+main { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; padding: 1rem; }
+@media(max-width: 768px) { main { grid-template-columns: 1fr; } }
+
+.player {
+background: linear-gradient(135deg, rgba(24,3,8,0.95), rgba(13,0,2,0.95));
+padding: 1rem;
+border-radius: 0.75rem;
+display: flex;
+flex-direction: column;
+border: 1px solid #3a0a0f;
+position: relative;
+overflow: hidden;
+}
+.player::before {
+content: '';
+position: absolute;
+bottom: -20%;
+right: -10%;
+width: 55%;
+aspect-ratio: 1;
+background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='98' fill='%23DC052D'/%3E%3Ccircle cx='100' cy='100' r='86' fill='white'/%3E%3Ccircle cx='100' cy='100' r='74' fill='%230066B2'/%3E%3C/svg%3E") center/contain no-repeat;
+opacity: 0.04;
+pointer-events: none;
+}
+
+.cover {
+width: 7rem; height: 7rem;
+background: linear-gradient(135deg, rgba(220,5,45,0.35), rgba(139,0,20,0.2));
+border-radius: 0.5rem;
+display: flex; align-items: center; justify-content: center;
+font-size: 1.5rem; font-weight: bold;
+margin-right: 1rem; flex-shrink: 0;
+border: 2px solid rgba(220,5,45,0.3);
+color: #fff;
+}
+.track-info { flex: 1; }
+.progress-bar { height: 0.4rem; background: #2a0a0f; border-radius: 1rem; overflow: hidden; cursor: pointer; }
+.progress-fill { height: 100%; background: #DC052D; width: 0%; pointer-events: none; transition: width 0.1s linear; }
+.controls { margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.controls button {
+padding: 0.4rem 0.8rem;
+background: rgba(220,5,45,0.08);
+border: 1px solid #3a0a0f;
+border-radius: 0.4rem;
+color: #f3f4f6; cursor: pointer;
+transition: background 0.2s;
+}
+.controls button.play { background: #DC052D; border-color: #DC052D; font-weight: bold; }
+.controls button:hover { background: rgba(220,5,45,0.25); }
+.controls button.play:hover { background: #b00424; }
+.playlist {
+background: rgba(15,2,5,0.8);
+border-radius: 0.75rem;
+padding: 0.5rem;
+display: flex; flex-direction: column; gap: 0.5rem;
+max-height: 24rem; overflow: auto;
+border: 1px solid #3a0a0f;
+}
+.track { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border-radius: 0.4rem; }
+.track:hover { background: rgba(220,5,45,0.08); }
+.track.active { background: rgba(220,5,45,0.15); border-left: 3px solid #DC052D; }
+.track button { background: none; border: none; cursor: pointer; color: #f3f4f6; font-size: 1rem; }
+.search {
+padding: 0.4rem 0.6rem; border: 1px solid #3a0a0f;
+border-radius: 0.4rem; background: rgba(220,5,45,0.05);
+color: #f3f4f6; width: 100%;
+}
+.search:focus { outline: none; border-color: #DC052D; }
+.volume-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+.volume-row input { flex: 1; accent-color: #DC052D; }
+.badge {
+font-size: 0.65rem; padding: 0.15rem 0.5rem;
+border-radius: 0.25rem; background: #DC052D;
+color: #fff; margin-left: 0.5rem;
+vertical-align: middle; font-weight: bold; letter-spacing: 0.03em;
+}
+#toast {
+position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+background: #DC052D; color: #fff;
+padding: 0.5rem 1.2rem; border-radius: 0.5rem;
+font-size: 0.85rem; opacity: 0; pointer-events: none;
+transition: opacity 0.3s; z-index: 99; font-weight: 500;
+}
+#toast.show { opacity: 1; }
+.playlist::-webkit-scrollbar { width: 4px; }
+.playlist::-webkit-scrollbar-track { background: transparent; }
+.playlist::-webkit-scrollbar-thumb { background: #DC052D; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Bayern Crest SVG Watermark -->
+<svg id="fcb-bg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" aria-hidden="true">
+<circle cx="100" cy="108" r="98" fill="#DC052D"/>
+<circle cx="100" cy="108" r="86" fill="#ffffff"/>
+<circle cx="100" cy="108" r="74" fill="#0066B2"/>
+<clipPath id="inner-clip">
+<circle cx="100" cy="108" r="72"/>
+</clipPath>
+<g clip-path="url(#inner-clip)">
+<polygon points="100,36 118,54 100,72 82,54" fill="#ffffff"/>
+<polygon points="118,54 136,72 118,90 100,72" fill="#0066B2"/>
+<polygon points="82,54 100,72 82,90 64,72" fill="#0066B2"/>
+<polygon points="64,72 82,90 64,108 46,90" fill="#ffffff"/>
+<polygon points="136,72 154,90 136,108 118,90" fill="#ffffff"/>
+<polygon points="100,72 118,90 100,108 82,90" fill="#ffffff"/>
+<polygon points="118,90 136,108 118,126 100,108" fill="#0066B2"/>
+<polygon points="82,90 100,108 82,126 64,108" fill="#0066B2"/>
+<polygon points="64,108 82,126 64,144 46,126" fill="#ffffff"/>
+<polygon points="136,108 154,126 136,144 118,126" fill="#ffffff"/>
+<polygon points="100,108 118,126 100,144 82,126" fill="#ffffff"/>
+<polygon points="118,126 136,144 118,162 100,144" fill="#0066B2"/>
+<polygon points="82,126 100,144 82,162 64,144" fill="#0066B2"/>
+<polygon points="64,144 82,162 64,180 46,162" fill="#ffffff"/>
+<polygon points="136,144 154,162 136,180 118,162" fill="#ffffff"/>
+<polygon points="100,144 118,162 100,180 82,162" fill="#ffffff"/>
+</g>
+<circle cx="100" cy="108" r="74" fill="none" stroke="#ffffff" stroke-width="3"/>
+<path d="M34,60 A74,74 0 0,1 166,60 L166,55 A80,80 0 0,0 34,55 Z" fill="#DC052D"/>
+<path d="M34,156 A74,74 0 0,0 166,156 L166,161 A80,80 0 0,1 34,161 Z" fill="#DC052D"/>
+<text x="100" y="50" text-anchor="middle" font-family="serif" font-size="13" font-weight="bold" fill="#ffffff" letter-spacing="2">FCB</text>
+<text x="100" y="173" text-anchor="middle" font-family="serif" font-size="9" font-weight="bold" fill="#ffffff" letter-spacing="1">MÜNCHEN</text>
+<text x="74" y="30" text-anchor="middle" font-size="8" fill="#ffffff">★</text>
+<text x="100" y="24" text-anchor="middle" font-size="8" fill="#ffffff">★</text>
+<text x="126" y="30" text-anchor="middle" font-size="8" fill="#ffffff">★</text>
+</svg>
+
+<div id="toast"></div>
+<div class="container">
+<header>
+<h1 style="font-size:1.2rem; display:flex; align-items:center; gap:0.5rem;">
+⚽ FCB Player <span class="badge">By_Sakshyam</span>
+</h1>
+<nav>
+<a href="#all" class="active" id="nav-all">All</a>
+<a href="#favorites" id="nav-fav">Favorites</a>
+<label style="cursor:pointer; padding:0.4rem 0.8rem; border-radius:0.4rem; background:rgba(220,5,45,0.12); border:1px solid #3a0a0f;">
+<input type="file" accept="audio/*" multiple style="display:none" id="file-input"> ⬆ Upload
+</label>
+</nav>
+</header>
+<main>
+<section class="player">
+<div style="display:flex; align-items:center;">
+<div class="cover" id="cover">--</div>
+<div class="track-info">
+<div id="title" style="font-size:1.1rem; font-weight:bold;">No track</div>
+<div id="artist" style="font-size:0.9rem; color:#aaa;">—</div>
+<div style="margin-top:0.5rem;" class="progress-bar" id="progress-bar">
+<div class="progress-fill" id="progress"></div>
+</div>
+<div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#aaa;">
+<span id="current-time">0:00</span>
+<span id="duration">0:00</span>
+</div>
+</div>
+</div>
+<div class="controls">
+<button id="prev">⏮</button>
+<button class="play" id="play">Play</button>
+<button id="next">⏭</button>
+<button id="remove" title="Remove current track">🗑</button>
+<button id="shuffle" title="Shuffle">🔀</button>
+<button id="repeat" title="Repeat">🔁</button>
+</div>
+<div class="volume-row">
+<span style="font-size:0.8rem; color:#888;">🔈</span>
+<input type="range" id="volume" min="0" max="1" step="0.01" value="1" title="Volume">
+<span style="font-size:0.8rem; color:#888;">🔊</span>
+</div>
+<div style="margin-top:0.5rem; font-size:0.8rem; color:#888;">Mia san mia ⚽ — Click ♥ to favorite a track.</div>
+<audio id="audio"></audio>
+</section>
+<aside>
+<input type="text" class="search" placeholder="🔍 Search tracks..." id="search">
+<div class="playlist" id="playlist"></div>
+<div style="font-size:0.8rem; color:#888; margin-top:0.5rem;" id="count"></div>
+</aside>
+</main>
+<footer>
+<div>Made with ♥ in Nepal 🇳🇵</div>
+<div>• Local playback only</div>
+</footer>
+</div>
+
+<script>
+// ── IndexedDB setup ──────────────────────────────────────────────
+const DB_NAME = "MusicPlayerDB";
+const DB_VERSION = 1;
+const STORE_BLOBS = "blobs";
+const META_KEY = "musicplayer_playlist";
+let db;
+
+function openDB() {
+return new Promise((resolve, reject) => {
+const req = indexedDB.open(DB_NAME, DB_VERSION);
+req.onupgradeneeded = e => {
+const d = e.target.result;
+if (!d.objectStoreNames.contains(STORE_BLOBS))
+d.createObjectStore(STORE_BLOBS, { keyPath: "id" });
+};
+req.onsuccess = e => { db = e.target.result; resolve(db); };
+req.onerror = e => reject(e.target.error);
+});
+}
+function saveBlob(id, blob) {
+return new Promise((resolve, reject) => {
+const tx = db.transaction(STORE_BLOBS, "readwrite");
+tx.objectStore(STORE_BLOBS).put({ id, blob });
+tx.oncomplete = resolve;
+tx.onerror = e => reject(e.target.error);
+});
+}
+function getBlob(id) {
+return new Promise((resolve, reject) => {
+const tx = db.transaction(STORE_BLOBS, "readonly");
+const req = tx.objectStore(STORE_BLOBS).get(id);
+req.onsuccess = e => resolve(e.target.result?.blob || null);
+req.onerror = e => reject(e.target.error);
+});
+}
+function deleteBlob(id) {
+return new Promise((resolve, reject) => {
+const tx = db.transaction(STORE_BLOBS, "readwrite");
+tx.objectStore(STORE_BLOBS).delete(id);
+tx.oncomplete = resolve;
+tx.onerror = e => reject(e.target.error);
+});
+}
+
+// ── Metadata persistence ─────────────────────────────────────────
+function saveMeta() {
+localStorage.setItem(META_KEY, JSON.stringify(
+playlist.map(t => ({ id:t.id, title:t.title, artist:t.artist, favorite:t.favorite, duration:t.duration }))
+));
+}
+async function loadMeta() {
+const raw = localStorage.getItem(META_KEY);
+if (!raw) return;
+for (const m of JSON.parse(raw)) {
+const blob = await getBlob(m.id);
+if (!blob) continue;
+playlist.push({ ...m, src: URL.createObjectURL(blob) });
+}
+}
+
+// ── App state ────────────────────────────────────────────────────
+let playlist = [], currentIndex = -1, isPlaying = false;
+let route = "all", shuffleOn = false, repeatOn = false;
+
+const audio = document.getElementById("audio");
+const cover = document.getElementById("cover");
+const titleEl = document.getElementById("title");
+const artistEl = document.getElementById("artist");
+const progress = document.getElementById("progress");
+const currentTimeEl = document.getElementById("current-time");
+const durationEl = document.getElementById("duration");
+const playlistEl = document.getElementById("playlist");
+const searchInput = document.getElementById("search");
+
+// ── Crest pulse sync with music ──────────────────────────────────
+audio.addEventListener("play", () => { document.getElementById("fcb-bg").style.animationDuration = "3s"; });
+audio.addEventListener("pause", () => { document.getElementById("fcb-bg").style.animationDuration = "6s"; });
+audio.addEventListener("ended", () => { document.getElementById("fcb-bg").style.animationDuration = "6s"; });
+
+// ── File upload ──────────────────────────────────────────────────
+document.getElementById("file-input").addEventListener("change", async e => {
+for (const file of e.target.files) {
+if (!file.type.startsWith("audio")) continue;
+const id = Math.random().toString(36).slice(2) + Date.now();
+await saveBlob(id, file);
+playlist.push({ id, title: file.name.replace(/\.[^/.]+$/, ""), artist: "Local file", src: URL.createObjectURL(file), favorite: false, duration: 0 });
+}
+saveMeta();
+if (currentIndex === -1 && playlist.length > 0) loadTrack(0);
+renderPlaylist();
+toast(`⚽ ${e.target.files.length} track(s) added & saved`);
+e.target.value = "";
+});
+
+// ── Controls ─────────────────────────────────────────────────────
+document.getElementById("play").addEventListener("click", () => {
+if (currentIndex === -1) return;
+if (isPlaying) { audio.pause(); isPlaying = false; }
+else { audio.play(); isPlaying = true; }
+updatePlayButton();
+});
+document.getElementById("prev").addEventListener("click", () => {
+if (!playlist.length) return;
+loadTrack(shuffleOn ? randomIndex() : (currentIndex - 1 + playlist.length) % playlist.length, true);
+});
+document.getElementById("next").addEventListener("click", () => {
+if (!playlist.length) return;
+loadTrack(shuffleOn ? randomIndex() : (currentIndex + 1) % playlist.length, true);
+});
+document.getElementById("remove").addEventListener("click", () => removeTrack(currentIndex));
+document.getElementById("shuffle").addEventListener("click", () => {
+shuffleOn = !shuffleOn;
+document.getElementById("shuffle").style.opacity = shuffleOn ? "1" : "0.4";
+});
+document.getElementById("repeat").addEventListener("click", () => {
+repeatOn = !repeatOn;
+document.getElementById("repeat").style.opacity = repeatOn ? "1" : "0.4";
+});
+document.getElementById("volume").addEventListener("input", e => { audio.volume = e.target.value; });
+document.getElementById("progress-bar").addEventListener("click", e => {
+if (!audio.duration) return;
+const rect = e.currentTarget.getBoundingClientRect();
+audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+});
+
+// ── Audio events ─────────────────────────────────────────────────
+audio.addEventListener("timeupdate", () => {
+progress.style.width = ((audio.currentTime / audio.duration) * 100 || 0) + "%";
+currentTimeEl.textContent = formatTime(audio.currentTime);
+});
+audio.addEventListener("ended", () => {
+if (repeatOn) { audio.currentTime = 0; audio.play(); return; }
+if (!playlist.length) return;
+loadTrack(shuffleOn ? randomIndex() : (currentIndex + 1) % playlist.length, true);
+});
+audio.addEventListener("loadedmetadata", () => {
+if (playlist[currentIndex]) { playlist[currentIndex].duration = audio.duration; saveMeta(); }
+durationEl.textContent = formatTime(audio.duration);
+});
+searchInput.addEventListener("input", renderPlaylist);
+document.getElementById("nav-all").addEventListener("click", e => { e.preventDefault(); route = "all"; renderPlaylist(); setActiveNav(); });
+document.getElementById("nav-fav").addEventListener("click", e => { e.preventDefault(); route = "favorites"; renderPlaylist(); setActiveNav(); });
+
+// ── Core functions ───────────────────────────────────────────────
+function loadTrack(index, autoplay = false) {
+currentIndex = index;
+const track = playlist[index];
+audio.src = track.src;
+titleEl.textContent = track.title;
+artistEl.textContent = track.artist;
+cover.textContent = getInitials(track.title);
+durationEl.textContent = formatTime(track.duration);
+if (autoplay) { audio.play(); isPlaying = true; }
+else isPlaying = false;
+updatePlayButton();
+renderPlaylist();
+}
+async function removeTrack(idx) {
+if (idx < 0 || idx >= playlist.length) return;
+const track = playlist[idx];
+await deleteBlob(track.id);
+URL.revokeObjectURL(track.src);
+playlist.splice(idx, 1);
+saveMeta();
+if (playlist.length === 0) { currentIndex = -1; resetPlayer(); }
+else if (idx === currentIndex) loadTrack(Math.min(idx, playlist.length - 1), false);
+else if (idx < currentIndex) currentIndex--;
+renderPlaylist();
+toast("Track removed");
+}
+function resetPlayer() {
+titleEl.textContent = "No track"; artistEl.textContent = "—";
+cover.textContent = "--"; progress.style.width = "0%";
+currentTimeEl.textContent = "0:00"; durationEl.textContent = "0:00";
+audio.src = ""; isPlaying = false; updatePlayButton();
+}
+function updatePlayButton() {
+document.getElementById("play").textContent = isPlaying ? "Pause" : "Play";
+}
+function renderPlaylist() {
+playlistEl.innerHTML = "";
+let filtered = playlist;
+if (route === "favorites") filtered = filtered.filter(t => t.favorite);
+const q = searchInput.value.toLowerCase();
+if (q) filtered = filtered.filter(t => t.title.toLowerCase().includes(q));
+for (const t of filtered) {
+const idx = playlist.findIndex(x => x.id === t.id);
+const el = document.createElement("div");
+el.className = "track" + (idx === currentIndex ? " active" : "");
+el.innerHTML = `
+<div style="width:2rem;height:2rem;background:rgba(220,5,45,0.25);display:flex;align-items:center;justify-content:center;border-radius:0.3rem;font-size:0.8rem;font-weight:bold;color:#fff;">${getInitials(t.title)}</div>
+<div style="flex:1;min-width:0;">
+<div style="font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.title}</div>
+<div style="font-size:0.7rem;color:#aaa;">${t.artist}${t.duration ? ' · ' + formatTime(t.duration) : ''}</div>
+</div>
+<button title="Play">▶</button>
+<button title="Favorite" style="color:${t.favorite ? '#DC052D' : 'inherit'};">${t.favorite ? '♥' : '♡'}</button>
+<button title="Remove">✕</button>`;
+const [playBtn, favBtn, remBtn] = el.querySelectorAll("button");
+playBtn.addEventListener("click", () => loadTrack(idx, true));
+favBtn.addEventListener("click", () => { t.favorite = !t.favorite; saveMeta(); renderPlaylist(); });
+remBtn.addEventListener("click", () => removeTrack(idx));
+playlistEl.appendChild(el);
+}
+document.getElementById("count").textContent = `Showing ${filtered.length} / ${playlist.length}`;
+}
+function randomIndex() {
+if (playlist.length === 1) return 0;
+let idx;
+do { idx = Math.floor(Math.random() * playlist.length); } while (idx === currentIndex);
+return idx;
+}
+function formatTime(sec) {
+if (!sec || isNaN(sec)) return "0:00";
+return `${Math.floor(sec/60)}:${Math.floor(sec%60).toString().padStart(2,"0")}`;
+}
+function getInitials(name) {
+const parts = name.split(/\s|\-|_/).filter(Boolean);
+return (parts[0]?.[0] || "-") + (parts[1]?.[0] || "");
+}
+function setActiveNav() {
+document.getElementById("nav-all").classList.toggle("active", route === "all");
+document.getElementById("nav-fav").classList.toggle("active", route === "favorites");
+}
+function toast(msg) {
+const el = document.getElementById("toast");
+el.textContent = msg; el.classList.add("show");
+setTimeout(() => el.classList.remove("show"), 2500);
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+document.getElementById("shuffle").style.opacity = "0.4";
+document.getElementById("repeat").style.opacity = "0.4";
+openDB().then(async () => {
+await loadMeta();
+if (playlist.length > 0) loadTrack(0, false);
+renderPlaylist();
+}).catch(err => {
+console.error("DB error:", err);
+toast("Storage unavailable — songs won't persist");
+});
+
+// ══ Service Worker Registration ════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('✅ FCB Player SW registered:', reg.scope))
+      .catch(err => console.warn('⚠️ SW registration failed:', err));
+  });
+}
+// ══════════════════════════════════════════════════════════════════
+</script>
+</body>
+</html>
